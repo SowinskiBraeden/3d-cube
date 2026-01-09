@@ -1,3 +1,6 @@
+#ifndef M_PI
+#define M_PI 3.141592653589793238462643383279502884 /* pi */
+#endif
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_render.h>
 #include <math.h>
@@ -48,7 +51,8 @@ VEC3 rotate(VEC3 v, double angle)
 {
   return (VEC3) {
     x: v.x * cos(angle) - v.z * sin(angle),
-    // y: v.y * cos(angle) - v.x * sin(angle),
+    // y: v.x * sin(angle) + v.y * cos(angle),
+    // z: v.z,
     y: v.y,
     z: v.x * sin(angle) + v.z * cos(angle),
   };
@@ -61,6 +65,103 @@ VEC3 translate_z(VEC3 v)
     v.y,
     v.z + 1,
   };
+}
+
+void draw_point(SDL_Renderer *renderer, VEC2 v)
+{
+    const float size = 2.0;
+
+    SDL_Rect point_rect;
+    // Adjust x and y to center the point visually, if desired
+    point_rect.x = v.x - size / 2;
+    point_rect.y = v.y - size / 2;
+    point_rect.w = size;
+    point_rect.h = size;
+
+    // Draw the filled rectangle
+    SDL_RenderFillRect(renderer, &point_rect);
+}
+
+void draw_circle(SDL_Renderer *renderer, VEC2 v, float r)
+{
+    float x = r, y = 0.0;
+
+    // Initialising the value of P
+    int P = 1 - r;
+    while (x > y)
+    {
+        y++;
+
+        // Mid-point is inside or on the perimeter
+        if (P <= 0)
+            P = P + 2*y + 1;
+
+        // Mid-point is outside the perimeter
+        else
+        {
+            x--;
+            P = P + 2*y - 2*x + 1;
+        }
+
+        // All the perimeter points have already been printed
+        if (x < y)
+            break;
+
+        // Printing the generated point and its reflection
+        // in the other octants after translation
+        draw_point(renderer, (VEC2){x + v.x, y + v.y});
+        draw_point(renderer, (VEC2){-x + v.x, y + v.y});
+        draw_point(renderer, (VEC2){x + v.x, -y + v.y});
+        draw_point(renderer, (VEC2){-x + v.x, -y + v.y});
+
+        // If the generated point is on the line x = y then
+        // the perimeter points have already been printed
+        if (x != y)
+        {
+            draw_point(renderer, (VEC2){y + v.x,  x + v.y});
+            draw_point(renderer, (VEC2){-y + v.x,  x + v.y});
+            draw_point(renderer, (VEC2){y + v.x, -x + v.y});
+            draw_point(renderer, (VEC2){-y + v.x, -x + v.y});
+        }
+    }
+}
+
+void draw_ellipse_points(SDL_Renderer *renderer, VEC2 *points, size_t num_points)
+{
+    for (size_t i = 0; i < num_points; ++i)
+    {
+        VEC2 a = points[i];
+        VEC2 b = points[(i + (size_t) sqrt(num_points)) % num_points];
+
+        SDL_RenderDrawLine(renderer, a.x, a.y, b.x, b.y);
+    }
+}
+
+void draw_2d_ellipse(SDL_Renderer *renderer, int x, int y, int rx, int ry) {
+    // Number of points to approximate the ellipse
+    const int num_points = 100;
+    VEC2 points[num_points];
+
+    for (int i = 0; i < num_points; ++i)
+    {
+        float angle = 2.0f * M_PI * i / num_points;
+        VEC2 p = (VEC2){
+            x + (int)(rx * cosf(angle)),
+            y + (int)(ry * sinf(angle)),
+        };
+        // printf("(%f, %f)\n" ,p.x, p.y);
+        // draw_point(renderer, p);
+        points[i] = p;
+    }
+
+    draw_ellipse_points(renderer, points, num_points);
+    for (int i = 0; i < num_points; ++i)
+    {
+        VEC2 a = points[i];
+        VEC2 b = points[(i + 1) % (num_points)];
+
+        SDL_RenderDrawLine(renderer, a.x, a.y, b.x, b.y);
+    }
 }
 
 int main(void)
@@ -110,16 +211,47 @@ int main(void)
 
     double angle = 0;
 
-    VEC3 vertecies[8] = {
-      {x:  0.25, y:  0.25, z: 0.25},
-      {x: -0.25, y:  0.25, z: 0.25},
-      {x: -0.25, y: -0.25, z: 0.25},
-      {x:  0.25, y: -0.25, z: 0.25},
+    int stacks = 20;
+    int slices = 20;
+    float r = 0.175;
 
-      {x:  0.25, y:  0.25, z: -0.25},
-      {x: -0.25, y:  0.25, z: -0.25},
-      {x: -0.25, y: -0.25, z: -0.25},
-      {x:  0.25, y: -0.25, z: -0.25},
+    VEC3 sphere[(stacks) * (slices)];
+
+    for (int i = 0; i < stacks; i++) {
+        // Phi (angle of latitude, ranges from 0 to PI)
+        float phi = M_PI * (float)i / (float)stacks;
+        float sinPhi = sin(phi);
+        float cosPhi = cos(phi);
+
+        for (int j = 0; j < slices; j++) {
+            // Theta (angle of longitude, ranges from 0 to 2*PI)
+            float theta = 2.f * M_PI * (float)j / (float)slices;
+            float sinTheta = sin(theta);
+            float cosTheta = cos(theta);
+
+            // Convert spherical coordinates to Cartesian (x, y, z)
+            // The choice of axis mapping may vary. Here Y is vertical.
+            sphere[i * stacks + j] = (VEC3){
+                x: r * cosTheta * sinPhi,
+                y: r * cosPhi,
+                z: r * sinTheta * sinPhi,
+            };
+        }
+    }
+
+    size_t num_points = sizeof(sphere) / sizeof(sphere[0]);
+
+    // CUBE
+    VEC3 vertecies[8] = {
+      {x:  0.3, y:  0.3, z: 0.3},
+      {x: -0.3, y:  0.3, z: 0.3},
+      {x: -0.3, y: -0.3, z: 0.3},
+      {x:  0.3, y: -0.3, z: 0.3},
+
+      {x:  0.3, y:  0.3, z: -0.3},
+      {x: -0.3, y:  0.3, z: -0.3},
+      {x: -0.3, y: -0.3, z: -0.3},
+      {x:  0.3, y: -0.3, z: -0.3},
     };
 
     int faces[6][4] = {
@@ -150,7 +282,7 @@ int main(void)
         delta = (now - last_time) / 1000.0f; // seconds
         last_time = now;
 
-        angle += 3.141592654 * delta;
+        angle += M_PI * delta * 0.5;
 
         // clear scren
         SDL_SetRenderDrawColor(
@@ -172,7 +304,25 @@ int main(void)
           RAINDROP_A
         );
 
-        // Draw faces
+        // draw sphere
+        // draw_circle(renderer, (VEC2){WINDOW_W/2, WINDOW_H/2}, 150);
+        // draw_2d_ellipse(renderer, WINDOW_W/2, WINDOW_H/2, 150, 150);
+
+        VEC2 ellipse[num_points];
+
+        for (size_t i = 0; i < num_points; i++)
+        {
+            VEC3 v = sphere[i];
+            v = rotate(v, angle);
+            v = translate_z(v);
+            // v.y = v.y - 0.125;
+            VEC2 v2 = project(v);
+            v2 = toScreenCoord(v2);
+            ellipse[i] = v2;
+        }
+        draw_ellipse_points(renderer, ellipse, num_points);
+
+        // Draw faces of cube
         // SDL_RenderDrawLine(renderer, x1, y1, x2, y2)
         for (int i = 0; i < 6; i++)
         {
@@ -181,8 +331,8 @@ int main(void)
             VEC3 ao = vertecies[faces[i][j]];
             VEC3 bo = vertecies[faces[i][(j + 1) % 4]];
 
-            ao = rotate(ao, angle);
-            bo = rotate(bo, angle);
+            ao = rotate(ao, -angle);
+            bo = rotate(bo, -angle);
 
             ao = translate_z(ao);
             bo = translate_z(bo);
@@ -197,6 +347,7 @@ int main(void)
           }
         }
 
+        // draw vertecies of cube
         // for (int i = 0; i < sizeof(vertecies) / sizeof(vertecies[0]); i++)
         // {
         //     VEC3 v3 = vertecies[i];
