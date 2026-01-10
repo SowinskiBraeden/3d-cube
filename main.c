@@ -90,50 +90,6 @@ void draw_point(SDL_Renderer *renderer, VEC2 v)
     SDL_RenderFillRect(renderer, &point_rect);
 }
 
-void draw_circle(SDL_Renderer *renderer, VEC2 v, float r)
-{
-    float x = r, y = 0.0;
-
-    // Initialising the value of P
-    int P = 1 - r;
-    while (x > y)
-    {
-        y++;
-
-        // Mid-point is inside or on the perimeter
-        if (P <= 0)
-            P = P + 2*y + 1;
-
-        // Mid-point is outside the perimeter
-        else
-        {
-            x--;
-            P = P + 2*y - 2*x + 1;
-        }
-
-        // All the perimeter points have already been printed
-        if (x < y)
-            break;
-
-        // Printing the generated point and its reflection
-        // in the other octants after translation
-        draw_point(renderer, (VEC2){x + v.x, y + v.y});
-        draw_point(renderer, (VEC2){-x + v.x, y + v.y});
-        draw_point(renderer, (VEC2){x + v.x, -y + v.y});
-        draw_point(renderer, (VEC2){-x + v.x, -y + v.y});
-
-        // If the generated point is on the line x = y then
-        // the perimeter points have already been printed
-        if (x != y)
-        {
-            draw_point(renderer, (VEC2){y + v.x,  x + v.y});
-            draw_point(renderer, (VEC2){-y + v.x,  x + v.y});
-            draw_point(renderer, (VEC2){y + v.x, -x + v.y});
-            draw_point(renderer, (VEC2){-y + v.x, -x + v.y});
-        }
-    }
-}
-
 void draw_ellipse_points(SDL_Renderer *renderer, VEC2 *points, size_t num_points)
 {
     for (size_t i = 0; i < num_points; ++i)
