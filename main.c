@@ -71,10 +71,22 @@ void rotate_z(VEC3 *v, double angle)
 }
 
 
-void translate_z(VEC3 *v)
+void translate_x(VEC3 *v, float dx)
 {
-  v->z = v->z + 1;
+  v->x = v->x + dx;
 }
+
+
+void translate_y(VEC3 *v, float dy)
+{
+  v->y = v->y + dy;
+}
+
+void translate_z(VEC3 *v, float dz)
+{
+  v->z = v->z + dz;
+}
+
 
 void draw_point(SDL_Renderer *renderer, VEC2 v)
 {
@@ -280,10 +292,17 @@ int main(void)
             for (int j = 0; j < slices; j++)
             {
                 VEC3 v3d = sphere_vectors_3d[i * slices + j];
-                rotate_y(&v3d, angle);
-                rotate_x(&v3d, angle);
-                rotate_z(&v3d, angle);
-                translate_z(&v3d);
+                // rotate_y(&v3d, angle);
+                // rotate_x(&v3d, angle);
+                // rotate_z(&v3d, angle);
+
+                rotate_y(&v3d, -angle);
+                rotate_x(&v3d, -angle);
+
+                translate_x(&v3d, sin(angle) / -2);
+                translate_y(&v3d, cos(angle) / -2);
+
+                translate_z(&v3d, 1);
 
                 VEC2 v2d = project(v3d);
                 toScreenCoord(&v2d);
@@ -301,10 +320,17 @@ int main(void)
           for (int i = 0; i < stacks; i++)
           {
             VEC3 v3d = sphere_vectors_3d[i * slices + j];
-            rotate_y(&v3d, angle);
-            rotate_x(&v3d, angle);
-            rotate_z(&v3d, angle);
-            translate_z(&v3d);
+            // rotate_y(&v3d, angle);
+            // rotate_x(&v3d, angle);
+            // rotate_z(&v3d, angle);
+
+            rotate_y(&v3d, -angle);
+            rotate_x(&v3d, -angle);
+
+            translate_x(&v3d, sin(angle) / -2);
+            translate_y(&v3d, cos(angle) / -2);
+
+            translate_z(&v3d, 1);
 
             VEC2 v2d = project(v3d);
             toScreenCoord(&v2d);
@@ -324,15 +350,17 @@ int main(void)
             VEC3 vec3A = vertecies[faces[i][j]];
             VEC3 vec3B = vertecies[faces[i][(j + 1) % 4]];
 
-            rotate_y(&vec3A, -angle);
-            rotate_y(&vec3B, -angle);
-            rotate_x(&vec3A, -angle);
-            rotate_x(&vec3B, -angle);
-            // rotate_z(&vec3A, -angle);
-            // rotate_z(&vec3B, -angle);
+            rotate_y(&vec3A, angle);
+            rotate_y(&vec3B, angle);
+            rotate_x(&vec3A, angle);
+            rotate_x(&vec3B, angle);
 
-            translate_z(&vec3A);
-            translate_z(&vec3B);
+            translate_x(&vec3A, sin(angle));
+            translate_x(&vec3B, sin(angle));
+            translate_y(&vec3A, cos(angle));
+            translate_y(&vec3B, cos(angle));
+            translate_z(&vec3A, 2);
+            translate_z(&vec3B, 2);
 
             VEC2 vec2A = project(vec3A);
             VEC2 vec2B = project(vec3B);
