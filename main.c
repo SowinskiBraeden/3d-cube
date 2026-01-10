@@ -80,13 +80,12 @@ void draw_point(SDL_Renderer *renderer, VEC2 v)
     const float size = 2.0;
 
     SDL_Rect point_rect;
-    // Adjust x and y to center the point visually, if desired
+
     point_rect.x = v.x - size / 2;
     point_rect.y = v.y - size / 2;
     point_rect.w = size;
     point_rect.h = size;
 
-    // Draw the filled rectangle
     SDL_RenderFillRect(renderer, &point_rect);
 }
 
@@ -95,20 +94,19 @@ void draw_ellipse_points(SDL_Renderer *renderer, VEC2 *points, size_t num_points
     for (size_t i = 0; i < num_points; ++i)
     {
         VEC2 a = points[i];
-        VEC2 b = points[(i + (size_t) sqrt(num_points)) % num_points];
+        VEC2 b = points[(i + 1) % num_points];
 
         SDL_RenderDrawLine(renderer, a.x, a.y, b.x, b.y);
     }
 }
 
-void draw_2d_ellipse(SDL_Renderer *renderer, int x, int y, int rx, int ry) {
-    // Number of points to approximate the ellipse
-    const int num_points = 100;
-    VEC2 points[num_points];
+void draw_ellipse(SDL_Renderer *renderer, int x, int y, int rx, int ry, int detail)
+{
+    VEC2 points[detail];
 
-    for (int i = 0; i < num_points; ++i)
+    for (int i = 0; i < detail; ++i)
     {
-        float angle = 2.0f * M_PI * i / num_points;
+        float angle = 2.0f * M_PI * i / detail;
         VEC2 p = (VEC2){
             x + (int)(rx * cosf(angle)),
             y + (int)(ry * sinf(angle)),
@@ -118,11 +116,11 @@ void draw_2d_ellipse(SDL_Renderer *renderer, int x, int y, int rx, int ry) {
         points[i] = p;
     }
 
-    draw_ellipse_points(renderer, points, num_points);
-    for (int i = 0; i < num_points; ++i)
+    draw_ellipse_points(renderer, points, detail);
+    for (int i = 0; i < detail; ++i)
     {
         VEC2 a = points[i];
-        VEC2 b = points[(i + 1) % (num_points)];
+        VEC2 b = points[(i + 1) % (detail)];
 
         SDL_RenderDrawLine(renderer, a.x, a.y, b.x, b.y);
     }
@@ -269,8 +267,7 @@ int main(void)
         );
 
         // draw sphere
-        // draw_circle(renderer, (VEC2){WINDOW_W/2, WINDOW_H/2}, 150);
-        // draw_2d_ellipse(renderer, WINDOW_W/2, WINDOW_H/2, 150, 150);
+        // draw_ellipse(renderer, WINDOW_W/2, WINDOW_H/2, 150, 150, 500);
 
         VEC2 ellipse[num_sphere_vectors];
 
