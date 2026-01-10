@@ -302,7 +302,7 @@ int main(void)
                 translate_x(&v3d, sin(angle) / -2);
                 translate_y(&v3d, cos(angle) / -2);
 
-                translate_z(&v3d, 1);
+                translate_z(&v3d, 1 + sin(angle) / 2);
 
                 VEC2 v2d = project(v3d);
                 toScreenCoord(&v2d);
@@ -330,7 +330,7 @@ int main(void)
             translate_x(&v3d, sin(angle) / -2);
             translate_y(&v3d, cos(angle) / -2);
 
-            translate_z(&v3d, 1);
+            translate_z(&v3d, 1 + sin(angle) / 2);
 
             VEC2 v2d = project(v3d);
             toScreenCoord(&v2d);
@@ -359,8 +359,8 @@ int main(void)
             translate_x(&vec3B, sin(angle));
             translate_y(&vec3A, cos(angle));
             translate_y(&vec3B, cos(angle));
-            translate_z(&vec3A, 2);
-            translate_z(&vec3B, 2);
+            translate_z(&vec3A, 2 + sin(-angle) / 2);
+            translate_z(&vec3B, 2 + sin(-angle) / 2);
 
             VEC2 vec2A = project(vec3A);
             VEC2 vec2B = project(vec3B);
