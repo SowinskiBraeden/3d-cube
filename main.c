@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #ifndef M_PI
 #define M_PI 3.141592653589793238462643383279502884 /* pi */
 #endif
@@ -37,34 +38,41 @@ VEC2 project(VEC3 v)
   };
 }
 
-VEC2 toScreenCoord(VEC2 v)
+void toScreenCoord(VEC2 *v)
 {
   // -1..1 -> 0..2 -> 0..1 -> 0..WINDOW_W/H
-
-  return (VEC2) {
-    x: (v.x + 1) / 2 * WINDOW_W,
-    y: (1 - (v.y + 1) / 2) * WINDOW_H,
-  };
+  v->x = (v->x + 1) / 2 * WINDOW_W;
+  v->y = (1 - (v->y + 1) / 2) * WINDOW_H;
 }
 
-VEC3 rotate(VEC3 v, double angle)
+void rotate_x(VEC3 *v, double angle)
 {
-  return (VEC3) {
-    x: v.x * cos(angle) - v.z * sin(angle),
-    // y: v.x * sin(angle) + v.y * cos(angle),
-    // z: v.z,
-    y: v.y,
-    z: v.x * sin(angle) + v.z * cos(angle),
-  };
+  float y = v->y;
+  float z = v->z;
+  v->y = y * cos(angle) - z * sin(angle);
+  v->z = y * sin(angle) + z * cos(angle);
 }
 
-VEC3 translate_z(VEC3 v)
+void rotate_y(VEC3 *v, double angle)
 {
-  return (VEC3) {
-    v.x,
-    v.y,
-    v.z + 1,
-  };
+  float x = v->x;
+  float z = v->z;
+  v->x = x * cos(angle) - z * sin(angle);
+  v->z = x * sin(angle) + z * cos(angle);
+}
+
+void rotate_z(VEC3 *v, double angle)
+{
+  float x = v->x;
+  float y = v->y;
+  v->x = x * cos(angle) - y * sin(angle);
+  v->y = x * sin(angle) + y * cos(angle);
+}
+
+
+void translate_z(VEC3 *v)
+{
+  v->z = v->z + 1;
 }
 
 void draw_point(SDL_Renderer *renderer, VEC2 v)
@@ -215,7 +223,7 @@ int main(void)
     int slices = 20;
     float r = 0.175;
 
-    VEC3 sphere[(stacks) * (slices)];
+    VEC3 sphere_vectors_3d[(stacks) * (slices)];
 
     for (int i = 0; i < stacks; i++) {
         // Phi (angle of latitude, ranges from 0 to PI)
@@ -231,7 +239,7 @@ int main(void)
 
             // Convert spherical coordinates to Cartesian (x, y, z)
             // The choice of axis mapping may vary. Here Y is vertical.
-            sphere[i * stacks + j] = (VEC3){
+            sphere_vectors_3d[i * stacks + j] = (VEC3){
                 x: r * cosTheta * sinPhi,
                 y: r * cosPhi,
                 z: r * sinTheta * sinPhi,
@@ -239,7 +247,7 @@ int main(void)
         }
     }
 
-    size_t num_points = sizeof(sphere) / sizeof(sphere[0]);
+    size_t num_sphere_vectors = sizeof(sphere_vectors_3d) / sizeof(sphere_vectors_3d[0]);
 
     // CUBE
     VEC3 vertecies[8] = {
@@ -254,7 +262,7 @@ int main(void)
       {x:  0.3, y: -0.3, z: -0.3},
     };
 
-    int faces[6][4] = {
+    int faces[4][4] = {
       {0, 1, 2, 3},  // front
       {4, 5, 6, 7},  // back
       {0, 1, 5, 4},  // top
@@ -308,42 +316,50 @@ int main(void)
         // draw_circle(renderer, (VEC2){WINDOW_W/2, WINDOW_H/2}, 150);
         // draw_2d_ellipse(renderer, WINDOW_W/2, WINDOW_H/2, 150, 150);
 
-        VEC2 ellipse[num_points];
+        VEC2 ellipse[num_sphere_vectors];
 
-        for (size_t i = 0; i < num_points; i++)
+        for (size_t i = 0; i < num_sphere_vectors; i++)
         {
-            VEC3 v = sphere[i];
-            v = rotate(v, angle);
-            v = translate_z(v);
-            // v.y = v.y - 0.125;
-            VEC2 v2 = project(v);
-            v2 = toScreenCoord(v2);
-            ellipse[i] = v2;
+            VEC3 vec3d = sphere_vectors_3d[i];
+
+            rotate_y(&vec3d, angle);
+            rotate_x(&vec3d, angle);
+            rotate_z(&vec3d, angle);
+            translate_z(&vec3d);
+
+            VEC2 vec2d = project(vec3d);
+            toScreenCoord(&vec2d);
+
+            ellipse[i] = vec2d;
         }
-        draw_ellipse_points(renderer, ellipse, num_points);
+        draw_ellipse_points(renderer, ellipse, num_sphere_vectors);
 
         // Draw faces of cube
         // SDL_RenderDrawLine(renderer, x1, y1, x2, y2)
-        for (int i = 0; i < 6; i++)
+        for (size_t i = 0; i < sizeof(faces) / sizeof(faces[0]); i++)
         {
-          for (int j = 0; j < 4; j++)
+          for (size_t j = 0; j < sizeof(faces[0]) / sizeof(faces[0][0]); j++)
           {
-            VEC3 ao = vertecies[faces[i][j]];
-            VEC3 bo = vertecies[faces[i][(j + 1) % 4]];
+            VEC3 vec3A = vertecies[faces[i][j]];
+            VEC3 vec3B = vertecies[faces[i][(j + 1) % 4]];
 
-            ao = rotate(ao, -angle);
-            bo = rotate(bo, -angle);
+            rotate_y(&vec3A, -angle);
+            rotate_y(&vec3B, -angle);
+            rotate_x(&vec3A, -angle);
+            rotate_x(&vec3B, -angle);
+            // rotate_z(&vec3A, -angle);
+            // rotate_z(&vec3B, -angle);
 
-            ao = translate_z(ao);
-            bo = translate_z(bo);
+            translate_z(&vec3A);
+            translate_z(&vec3B);
 
-            VEC2 a = project(ao);
-            VEC2 b = project(bo);
+            VEC2 vec2A = project(vec3A);
+            VEC2 vec2B = project(vec3B);
 
-            a = toScreenCoord(a);
-            b = toScreenCoord(b);
+            toScreenCoord(&vec2A);
+            toScreenCoord(&vec2B);
 
-            SDL_RenderDrawLine(renderer, a.x, a.y, b.x, b.y);
+            SDL_RenderDrawLine(renderer, vec2A.x, vec2A.y, vec2B.x, vec2B.y);
           }
         }
 
