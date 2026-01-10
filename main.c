@@ -5,6 +5,7 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_render.h>
 #include <math.h>
+#include <stdbool.h>
 
 #define WINDOW_W 800
 #define WINDOW_H 800
@@ -89,12 +90,12 @@ void draw_point(SDL_Renderer *renderer, VEC2 v)
     SDL_RenderFillRect(renderer, &point_rect);
 }
 
-void draw_ellipse_points(SDL_Renderer *renderer, VEC2 *points, size_t num_points)
+void draw_ellipse_points(SDL_Renderer *renderer, VEC2 *points, size_t num_points, bool open)
 {
-    for (size_t i = 0; i < num_points; ++i)
+    for (size_t i = 0; i < (open ? num_points - 1 : num_points); ++i)
     {
         VEC2 a = points[i];
-        VEC2 b = points[(i + 1) % num_points];
+        VEC2 b = open ? points[i + 1] : points[(i + 1) % num_points];
 
         SDL_RenderDrawLine(renderer, a.x, a.y, b.x, b.y);
     }
@@ -116,7 +117,7 @@ void draw_ellipse(SDL_Renderer *renderer, int x, int y, int rx, int ry, int deta
         points[i] = p;
     }
 
-    draw_ellipse_points(renderer, points, detail);
+    draw_ellipse_points(renderer, points, detail, false);
     for (int i = 0; i < detail; ++i)
     {
         VEC2 a = points[i];
@@ -173,19 +174,22 @@ int main(void)
 
     double angle = 0;
 
-    int stacks = 20;
-    int slices = 20;
+    int stacks = 10;
+    int slices = 12;
     float r = 0.175;
 
-    VEC3 sphere_vectors_3d[(stacks) * (slices)];
+    // Generate sphere vectors
+    VEC3 sphere_vectors_3d[stacks * slices];
 
-    for (int i = 0; i < stacks; i++) {
+    for (int i = 0; i < stacks; i++)
+    {
         // Phi (angle of latitude, ranges from 0 to PI)
-        float phi = M_PI * (float)i / (float)stacks;
+        float phi = M_PI * (float)i / (float)(stacks - 1);
         float sinPhi = sin(phi);
         float cosPhi = cos(phi);
 
-        for (int j = 0; j < slices; j++) {
+        for (int j = 0; j < slices; j++)
+        {
             // Theta (angle of longitude, ranges from 0 to 2*PI)
             float theta = 2.f * M_PI * (float)j / (float)slices;
             float sinTheta = sin(theta);
@@ -193,7 +197,7 @@ int main(void)
 
             // Convert spherical coordinates to Cartesian (x, y, z)
             // The choice of axis mapping may vary. Here Y is vertical.
-            sphere_vectors_3d[i * stacks + j] = (VEC3){
+            sphere_vectors_3d[i * slices + j] = (VEC3){
                 x: r * cosTheta * sinPhi,
                 y: r * cosPhi,
                 z: r * sinTheta * sinPhi,
@@ -201,7 +205,7 @@ int main(void)
         }
     }
 
-    size_t num_sphere_vectors = sizeof(sphere_vectors_3d) / sizeof(sphere_vectors_3d[0]);
+    // size_t num_sphere_vectors = sizeof(sphere_vectors_3d) / sizeof(sphere_vectors_3d[0]);
 
     // CUBE
     VEC3 vertecies[8] = {
@@ -269,23 +273,47 @@ int main(void)
         // draw sphere
         // draw_ellipse(renderer, WINDOW_W/2, WINDOW_H/2, 150, 150, 500);
 
-        VEC2 ellipse[num_sphere_vectors];
-
-        for (size_t i = 0; i < num_sphere_vectors; i++)
+        // render latitude ellipses
+        for (int i = 0; i < stacks; i++)
         {
-            VEC3 vec3d = sphere_vectors_3d[i];
+            VEC2 ellipse[slices];
+            for (int j = 0; j < slices; j++)
+            {
+                VEC3 v3d = sphere_vectors_3d[i * slices + j];
+                rotate_y(&v3d, angle);
+                rotate_x(&v3d, angle);
+                rotate_z(&v3d, angle);
+                translate_z(&v3d);
 
-            rotate_y(&vec3d, angle);
-            rotate_x(&vec3d, angle);
-            rotate_z(&vec3d, angle);
-            translate_z(&vec3d);
+                VEC2 v2d = project(v3d);
+                toScreenCoord(&v2d);
 
-            VEC2 vec2d = project(vec3d);
-            toScreenCoord(&vec2d);
+                ellipse[j] = v2d;
+            }
 
-            ellipse[i] = vec2d;
+            draw_ellipse_points(renderer, ellipse, slices, false);
         }
-        draw_ellipse_points(renderer, ellipse, num_sphere_vectors);
+
+        // render verticle ellipses
+        for (int j = 0; j < slices; j++)
+        {
+          VEC2 ellipse[stacks];
+          for (int i = 0; i < stacks; i++)
+          {
+            VEC3 v3d = sphere_vectors_3d[i * slices + j];
+            rotate_y(&v3d, angle);
+            rotate_x(&v3d, angle);
+            rotate_z(&v3d, angle);
+            translate_z(&v3d);
+
+            VEC2 v2d = project(v3d);
+            toScreenCoord(&v2d);
+
+            ellipse[i] = v2d;
+          }
+
+          draw_ellipse_points(renderer, ellipse, stacks, true);
+        }
 
         // Draw faces of cube
         // SDL_RenderDrawLine(renderer, x1, y1, x2, y2)
